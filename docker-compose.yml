@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: mini-notes-app
+    ports:
+      - "3000:3000"
+    volumes:
+      - notes-data:/data
+    environment:
+      - DATA_DIR=/data
+      - PORT=3000
+    restart: unless-stopped
+
+volumes:
+  notes-data:
+    driver: local
