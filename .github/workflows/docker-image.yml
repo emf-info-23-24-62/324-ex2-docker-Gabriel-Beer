@@ -1,16 +1,30 @@
+name: Build and Push Backend to ACR
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
 env:
   ACR_LOGIN_SERVER: m324demoacrqba.azurecr.io
+  IMAGE_NAME: petitesannonces-backend
 
 jobs:
   build-docker:
     runs-on: ubuntu-latest
     environment: ACR
+    
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
       
-      - name: Build Docker image
-        run: docker build -t petitesannonces-backend:latest -f ./apps/backend/Dockerfile ./apps/backend
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       
       - name: Login to ACR
         uses: azure/docker-login@v2
@@ -19,7 +33,24 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
       
-      - name: Tag and Push Docker image to ACR
+      - name: Extract metadata
+        id: meta
         run: |
-          docker tag petitesannonces-backend:latest ${{ env.ACR_LOGIN_SERVER }}/petitesannonces-backend:latest
-          docker push ${{ env.ACR_LOGIN_SERVER }}/petitesannonces-backend:latest
+          echo "date=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/backend
+          file: ./apps/backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.sha_short }}
+            ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.date }}
+          cache-from: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+      
+      - name: Image digest
+        run: echo "Image pushed successfully with tags latest, ${{ steps.meta.outputs.sha_short }}, and ${{ steps.meta.outputs.date }}"
