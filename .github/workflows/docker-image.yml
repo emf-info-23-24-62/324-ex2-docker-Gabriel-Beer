@@ -12,7 +12,7 @@ on:
 
 env:
   ACR_LOGIN_SERVER: m324demoacrqba.azurecr.io
-  IMAGE_NAME: petitesannonces-backend
+  IMAGE_NAME: petitesannonces-backend-gabriel-beer
 
 jobs:
   build-docker:
@@ -22,6 +22,19 @@ jobs:
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./app
+
+      - name: Run ESLint
+        run: npm run lint
+        working-directory: ./app
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
